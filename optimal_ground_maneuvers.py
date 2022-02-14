@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from heapq import heappush, heappop
 
-from numpy import empty
+import numpy
 
 n = 3
 
@@ -34,13 +34,15 @@ class priorityQueue:
             return False
 
 class node:
-    def __init__(self, parent, occ_mat, empty_tile_pos, cost, level):
+    def __init__(self, parent, occ_mat, robot_pose, cost, level, robot_action):
 
         self.parent = parent
         
         self.occ_mat = occ_mat
 
-        self.empty_tile_pos = empty_tile_pos
+        self.robot_pose = robot_pose
+
+        self.robot_action = robot_action
 
         self.cost = cost
 
@@ -48,7 +50,7 @@ class node:
 
 
     def __lt__(self,nxt):
-        return self.cost < nxt.cost
+        return self.level+self.cost*0.5 < nxt.level+nxt.cost*0.5
 
 
 def calculateCost(occ_mat,final) -> float:
@@ -57,32 +59,33 @@ def calculateCost(occ_mat,final) -> float:
     for i in range(len(occ_mat)):
         for j in range(len(occ_mat[0])):
             if (occ_mat[i][j]):
-                
-                tot_dist += occ_mat[i][j]*((i-final[0])**2+(j-final[1])**2)**(1/2)
+                tot_dist += abs(occ_mat[i][j]-final[i][j])
     return tot_dist
 
-
-def newNode(occ_mat, empty_tile_pos, new_empty_tile_pos,
-                level, parent, final) -> node:
+def newNode(occ_mat, robot_pose, new_robot_pose,
+                level, parent, final, action) -> node:
 
     new_mat = copy.deepcopy(occ_mat)
 
-    x1 = empty_tile_pos[0]
-    y1 = empty_tile_pos[1]
-    x2 = new_empty_tile_pos[0]
-    y2 = new_empty_tile_pos[1]
+    x1 = robot_pose[0]
+    y1 = robot_pose[1]
+    x2 = new_robot_pose[0]
+    y2 = new_robot_pose[1]
 
     if (new_mat[x2][y2]):
         step_x = x2-x1
         step_y = y2-y1
-        new_mat[x2+step_x][y2+step_y] += new_mat[x2][y2]
-        new_mat[x2][y2] = 0
+        if (isSafe(x2+step_x, y2+step_y,len(parent.occ_mat),len(parent.occ_mat[0]))):
+            new_mat[x2+step_x][y2+step_y] += new_mat[x2][y2]
+            new_mat[x2][y2] = 0
+        else:
+            return
 
     
     cost = calculateCost(new_mat, final)
 
-    new_node = node(parent, new_mat, new_empty_tile_pos,
-                    cost+level, level)
+    new_node = node(parent, new_mat, new_robot_pose,
+                    cost+level, level, action)
 
     return new_node
 
@@ -93,94 +96,65 @@ def printMatrix(mat):
             print("%d " % (mat[i][j]), end = " ")
         print()
 
-def isSafe(x, y, x_max,y_max,final):
-    return x>=0 and x < x_max  and y >= 0 and y< y_max and (not (x == final[0] and y == final[1]))
+def isSafe(x, y, x_max,y_max):
+    return x>=0 and x < x_max  and y >= 0 and y< y_max
 
-def printPath(root):
+def robotPath(root):
 
     if root == None:
-        return
+        return []
 
-    printPath(root.parent)
-    printMatrix(root.occ_mat)
-    print(root.empty_tile_pos)
-    print()
+    return robotPath(root.parent) + [root.robot_action]
 
 
-def solve(initial, empty_tile_pos, final):
+def solve(initial, robot_pose, final):
 
     pq = priorityQueue()
 
     cost = calculateCost(initial, final)
 
-    root = node(None, initial, empty_tile_pos, cost, 0)
+    root = node(None, initial, robot_pose, cost, 0, [])
 
     pq.push(root)
 
     while not pq.empty():
         minimum = pq.pop()
 
-        if int(minimum.cost)-minimum.level == 0:
+        if minimum.cost - minimum.level <= 0.1:
 
-            printPath(minimum)
-            return
+            return robotPath(minimum)
 
         for i in range(n+1):
-            print(row[i],col[i])
-            new_tile_pos = [minimum.empty_tile_pos[0] + row[i], minimum.empty_tile_pos[1] + col[i]]
-            print(new_tile_pos)
-            if isSafe(new_tile_pos[0], new_tile_pos[1],len(minimum.occ_mat),len(minimum.occ_mat[0]),final):
+            new_robot_pose = [minimum.robot_pose[0] + row[i], minimum.robot_pose[1] + col[i]]
+            # print(new_robot_pose)
+            if isSafe(new_robot_pose[0], new_robot_pose[1],len(minimum.occ_mat),len(minimum.occ_mat[0])):
 
-                child = newNode(minimum.occ_mat,minimum.empty_tile_pos,new_tile_pos,minimum.level+1,minimum,final)
-
-                pq.push(child)
+                child = newNode(minimum.occ_mat,minimum.robot_pose,new_robot_pose,minimum.level+1,minimum,final, [row[i],col[i]])
+                if child:
+                    pq.push(child)
 
 
 def main():
-    initial = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,1,0,0,0],[0,0,1,1,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]]
-
-    sx = -5.0  # [m]
-    sy = -5.0  # [m]
-    gx = 50.0  # [m]
-    gy = 50.0  # [m]
-    grid_size = 2.0  # [m]
-    robot_radius = 1.0  # [m]
-
-    # set obstacle positions
-    ox, oy = [], []
-    for i in range(-10, 60):
-        ox.append(i)
-        oy.append(-10.0)
-    for i in range(-10, 60):
-        ox.append(60.0)
-        oy.append(i)
-    for i in range(-10, 61):
-        ox.append(i)
-        oy.append(60.0)
-    for i in range(-10, 61):
-        ox.append(-10.0)
-        oy.append(i)
-    for i in range(-10, 40):
-        ox.append(20.0)
-        oy.append(i)
-    for i in range(0, 40):
-        ox.append(40.0)
-        oy.append(60.0 - i)
+    initial = numpy.zeros((8,8))
 
 
+    initial[3][4] = 1
+    initial[3][3] = 1
+    initial[3][2] = 1
+    initial[4][2] = 1
 
 
-    final = [3,3]
+    final = numpy.zeros((8,8))
 
-    empty_tile_pos = [0,0]
+    final[3][4] = 1
+    final[2][3] = 2
+    final[3][2] = 1
 
-    plt.plot(empty_tile_pos[0], empty_tile_pos[1], "og")
-    plt.plot([2,3], [2,2], "xb")
-    plt.grid(True)
-    plt.axis("equal")
-    plt.show()
+    robot_pose = [5,5]
 
-    solve(initial,empty_tile_pos,final)
+
+    robot_path = solve(initial,robot_pose,final)
+    print(robot_path)
 
 
 
