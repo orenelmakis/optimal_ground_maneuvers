@@ -50,7 +50,7 @@ class node:
 
 
     def __lt__(self,nxt):
-        return self.level+self.cost*0.5 < nxt.level+nxt.cost*0.5
+        return self.level+self.cost < nxt.level+nxt.cost
 
 
 def calculateCost(occ_mat,final) -> float:
@@ -138,17 +138,15 @@ def main():
     initial = numpy.zeros((8,8))
 
 
-    initial[3][4] = 1
-    initial[3][3] = 1
-    initial[3][2] = 1
-    initial[4][2] = 1
+    initial[5][4] = 1
+    initial[5][3] = 1
+
 
 
     final = numpy.zeros((8,8))
 
-    final[3][4] = 1
-    final[2][3] = 2
     final[3][2] = 1
+    final[2][2] = 1
 
     robot_pose = [5,5]
 
