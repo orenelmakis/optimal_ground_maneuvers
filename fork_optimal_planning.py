@@ -20,6 +20,29 @@ motion = numpy.array([[1,0],[0,1],[0,-1],[-1,0]])
 import numpy
 
 
+class target:
+    def __init__(self,Pose):
+        self.x = Pose[0]
+        self.y = Pose[1]
+
+
+class material:
+
+    def __init__(self,materialPose, materialTarget):
+            self.x = materialPose[0]
+            self.y = materialPose[1]
+            self.materialTarget = target(materialTarget)
+
+
+    def calculateDistance(self):
+        return abs(self.x-self.materialTarget.x[0]) + abs(self.y-self.materialTarget.y)
+
+def calculateTotalCost(materialsNodes):
+    totalDistance = 0
+    for i in materialsNodes:
+        totalDistance += i.calculateDistance()
+    return totalDistance
+
 class priorityQueue:
 
     def __init__(self):
@@ -60,8 +83,7 @@ def availableMotion(poseCurr,motion,occMap):
     return not (occMap[int(poseCurr[0]-motion[0])][int(poseCurr[1]-motion[1])]) and \
             isSafe(poseCurr[0]-motion[0],poseCurr[1]-motion[1],len(occMap),len(occMap[0]))
 
-def calculateDistance(poseCurr,poseTar):
-    return abs(poseCurr[0]-poseTar[0]) + abs(poseCurr[1]-poseTar[1])
+
 
 
 class node:
@@ -126,11 +148,11 @@ def robotPath(root):
     return robotPath(root.parent) + [root.robotAction]
 
 
-def solve(occMap, robotPose, targetMap, materialPose, materialTarget):
+def solve(materialNode):
 
     pq = priorityQueue()
 
-    cost = calculateDistance(materialPose, materialTarget)
+    cost = materialNode.calculateDistance()
 
     root = node(None, occMap, robotPose,materialPose, cost, 0, [],materialTarget)
 
@@ -151,14 +173,8 @@ def solve(occMap, robotPose, targetMap, materialPose, materialTarget):
 
 
 def main():
-    occMap=numpy.zeros([5,5])
-    occMap[1][1] = 1
-    robotPose = numpy.array([0,0])
-    TargetMap = numpy.zeros([5,5])
-    TargetMap[3][3] = 1
-    MaterialPose = numpy.array([1,1])
-    MaterialTarget = numpy.array([3,3])
-    print(solve(occMap,robotPose, TargetMap, MaterialPose, MaterialTarget))
+    material1 = material([1,1],[3,3])
+    print(solve(material1))
 
 
 
